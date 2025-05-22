@@ -1,0 +1,15 @@
+body {
+    font-family: sans-serif;
+    padding: 1rem;
+    background: #f4f4f4;
+    color: #333;
+}
+
+h1 {
+    color: #317EFB;
+}
+
+#status {
+    font-weight: bold;
+    margin: 1rem 0;
+}
