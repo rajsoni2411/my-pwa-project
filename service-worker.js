@@ -1,47 +1,37 @@
-const CACHE_NAME = 'pwa-api-cache-v1';
-const STATIC_ASSETS = [
-    '/',
-    '/index.html',
-    '/style.css',
-    '/app.js',
-    '/manifest.json',
-    '/icon-192.png',
-    '/icon-512.png'
-];
-
+const CACHE_NAME = 'pwa-posts-cache-v2';
 const API_URL = 'https://jsonplaceholder.typicode.com/posts';
 
 self.addEventListener('install', event => {
-    console.log('[SW] Installing');
-    event.waitUntil(
-        caches.open(CACHE_NAME).then(cache => {
-            return cache.addAll(STATIC_ASSETS);
-        })
-    );
+    self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-    console.log('[SW] Activated');
+    event.waitUntil(
+        caches.keys().then(keys =>
+            Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+        )
+    );
+    self.clients.claim();
 });
 
 self.addEventListener('fetch', event => {
-    const req = event.request;
+    const url = new URL(event.request.url);
 
-    if (req.url === API_URL) {
+    if (url.href === API_URL) {
         event.respondWith(
-            fetch(req)
-                .then(res => {
-                    const resClone = res.clone();
+            fetch(event.request)
+                .then(response => {
+                    const clone = response.clone();
                     caches.open(CACHE_NAME).then(cache => {
-                        cache.put(req, resClone);
+                        cache.put(event.request, clone);
                     });
-                    return res;
+                    return response;
                 })
-                .catch(() => caches.match(req))
+                .catch(() => caches.match(event.request))
         );
     } else {
         event.respondWith(
-            fetch(req).catch(() => caches.match(req))
+            caches.match(event.request).then(res => res || fetch(event.request))
         );
     }
 });

@@ -13,58 +13,54 @@ function updateStatus() {
     statusEl.textContent = navigator.onLine ? '✅ You are online' : '⚠️ You are offline';
 }
 
+async function getCachedData() {
+    const cache = await caches.open('pwa-posts-cache-v2');
+    const cachedResponse = await cache.match(API_URL);
+    if (cachedResponse) {
+        return await cachedResponse.json();
+    }
+    return [];
+}
+
 async function loadContent() {
     updateStatus();
 
     if (navigator.onLine) {
         try {
-            console.log('Fetching fresh data from network...');
-            // Force fetch fresh data ignoring cache
-            const res = await fetch(API_URL, { cache: 'reload' });
+            const res = await fetch(API_URL, { cache: 'no-store' }); // Force no stale cache
             const data = await res.json();
 
-            // Show all posts when online
-            contentEl.innerHTML = data.map(post =>
-                `<article>
+            contentEl.innerHTML = data.map(post => `
+        <article>
           <h3>${post.title}</h3>
           <p>${post.body}</p>
-        </article>`
-            ).join('');
+        </article>
+      `).join('');
         } catch (err) {
-            console.error('Failed to fetch online data:', err);
-            contentEl.innerHTML = `<p>⚠️ Failed to fetch data online</p>`;
+            console.error('Fetch failed online:', err);
+            const data = await getCachedData();
+            contentEl.innerHTML = `<p>⚠️ Network error. Showing cached ${data.length} posts.</p>` + data.map(post => `
+        <article>
+          <h3>${post.title}</h3>
+          <p>${post.body}</p>
+        </article>
+      `).join('');
         }
     } else {
-        if ('caches' in window) {
-            const cachedResponse = await caches.match(API_URL);
-            if (cachedResponse) {
-                const data = await cachedResponse.json();
-
-                // Show only first 10 posts when offline
-                const offlineData = data.slice(0, MAX_OFFLINE_POSTS);
-
-                contentEl.innerHTML = offlineData.map(post =>
-                    `<article>
+        const data = await getCachedData();
+        const limited = data.slice(0, MAX_OFFLINE_POSTS);
+        contentEl.innerHTML = limited.map(post => `
+        <article>
             <h3>${post.title}</h3>
             <p>${post.body}</p>
-          </article>`
-                ).join('') + `<p><em>(Cached - showing 10 posts)</em></p>`;
-            } else {
-                contentEl.innerHTML = `<p>⚠️ Offline: No cached data available</p>`;
-            }
-        }
+        </article>
+        `).join('') + `<p><em>(Offline - Showing 10 cached posts)</em></p>`;
     }
+
 }
 
-// Listen for network status changes and reload content accordingly
-window.addEventListener('online', () => {
-    console.log('Network is back online — refreshing data');
-    loadContent();
-});
-window.addEventListener('offline', () => {
-    console.log('Network is offline — showing cached data');
-    loadContent();
-});
+window.addEventListener('online', loadContent);
+window.addEventListener('offline', loadContent);
 
-// Initial content load
+// Initial load
 loadContent();
