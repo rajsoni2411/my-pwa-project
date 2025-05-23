@@ -31,11 +31,11 @@ async function loadContent() {
             const data = await res.json();
 
             contentEl.innerHTML = data.map(post => `
-        <article>
-          <h3>${post.title}</h3>
-          <p>${post.body}</p>
-        </article>
-      `).join('');
+                <article>
+                <h3>${post.title}</h3>
+                <p>${post.body}</p>
+                </article>
+            `).join('');
         } catch (err) {
             console.error('Fetch failed online:', err);
             const data = await getCachedData();
